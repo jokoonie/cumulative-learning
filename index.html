@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>누적복습</title>
+    <style>
+        :root {
+            --primary-color: #7c9082;     /* 파스텔톤 연두/세이지 그린 */
+            --primary-hover: #677b6d;
+            --bg-color: #f7f5f0;          /* 따뜻한 베이지 배경 */
+            --card-bg: #ffffff;
+            --border-color: #e3ded6;
+            --text-color: #4a453e;        /* 부드러운 다크 브라운 텍스트 */
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 24px;
+            color: var(--primary-color);
+        }
+
+        /* 시트 탭 스타일 */
+        .sheet-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .sheet-tab {
+            padding: 8px 16px;
+            background: #ede8df;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-color);
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .sheet-tab.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .sheet-tab:hover {
+            opacity: 0.9;
+        }
+
+        /* 컨트롤 버튼 그룹 (하단 배치용 여백 조정) */
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 16px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+        }
+
+        button.danger {
+            background: #d98880;
+        }
+        button.danger:hover {
+            background: #c0766f;
+        }
+
+        /* 캘린더 테이블 영역 (가로 스크롤 지원) */
+        .table-wrapper {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+            max-height: 70vh;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        th, td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        th {
+            background-color: #faf8f5;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        /* 셀 디자인 */
+        .grid-cell {
+            min-width: 150px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* 빈칸일 때 클릭하면 날짜를 고를 수 있는 input */
+        .empty-cell-input {
+            width: 100%;
+            height: 100%;
+            border: 1px dashed #d6cec2;
+            background: #fcfbfa;
+            color: #9c9387;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 13px;
+        }
+        .empty-cell-input:hover {
+            background: #f3efe6;
+            border-color: var(--primary-color);
+            color: var(--text-color);
+        }
+
+        /* 날짜가 입력된 후 표시되는 영역 */
+        .filled-cell {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            width: 100%;
+        }
+
+        .date-btn {
+            flex: 1;
+            background: #f4f0e8;
+            color: #4a453e;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .date-btn:hover {
+            background: #ebe4d8;
+            border-color: #c4bcae;
+        }
+
+        .date-btn.has-memo {
+            background: #e4ebd9;
+            color: #536447;
+            border-color: #c9d6bc;
+        }
+
+        .edit-date-btn {
+            background: #ede8df;
+            border: none;
+            padding: 6px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            color: #6e6559;
+        }
+        .edit-date-btn:hover {
+            background: #ded7cc;
+        }
+
+        .row-delete-container {
+            text-align: center;
+        }
+
+        /* 모달 창 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(74, 69, 62, 0.4);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            width: 400px;
+            max-width: 90%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border: 1px solid var(--border-color);
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: var(--text-color);
+        }
+
+        .modal-content textarea {
+            width: 100%;
+            height: 120px;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            resize: vertical;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+            background: #fcfbfa;
+            color: var(--text-color);
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>📚 누적복습</h1>
+        <div id="current-sheet-title">과목: -</div>
+    </header>
+
+    <div class="sheet-tabs" id="sheet-tabs"></div>
+
+    <div class="table-wrapper">
+        <table id="calendar-table">
+            <thead id="table-head"></thead>
+            <tbody id="table-body"></tbody>
+        </table>
+    </div>
+
+    <div class="controls">
+        <button onclick="addSheet()">+ 과목(시트) 추가</button>
+        <button class="danger" onclick="deleteCurrentSheet()">현재 과목 삭제</button>
+        <button onclick="addColumn()">+ 복습개념(열) 추가</button>
+        <button onclick="addRow()">+ 행 추가</button>
+    </div>
+</div>
+
+<div class="modal" id="memo-modal">
+    <div class="modal-content">
+        <h3 id="modal-title">상세보기 및 학습 내용 입력</h3>
+        <textarea id="modal-memo" placeholder="오늘 공부한 내용, 틀린 이유, 핵심 키워드를 적어보세요..."></textarea>
+        <div class="modal-buttons">
+            <button class="danger" onclick="closeModal()">취소</button>
+            <button onclick="saveMemo()">저장</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let data = JSON.parse(localStorage.getItem('study_calendar_data_v6')) || {
+        "국어": {
+            columns: [
+                { id: "col_1", name: "1일차 복습" },
+                { id: "col_2", name: "3일차 복습" },
+                { id: "col_3", name: "7일차 복습" }
+            ],
+            rows: [
+                { id: "row_1" },
+                { id: "row_2" }
+            ],
+            cells: {} 
+        }
+    };
+
+    let currentSheet = Object.keys(data)[0] || "국어";
+    let activeCellKey = null;
+
+    function saveData() {
+        localStorage.setItem('study_calendar_data_v6', JSON.stringify(data));
+    }
+
+    function renderTabs() {
+        const tabsContainer = document.getElementById('sheet-tabs');
+        tabsContainer.innerHTML = '';
+        
+        Object.keys(data).forEach(sheetName => {
+            const btn = document.createElement('button');
+            btn.className = `sheet-tab ${sheetName === currentSheet ? 'active' : ''}`;
+            btn.innerText = sheetName;
+            btn.onclick = () => {
+                currentSheet = sheetName;
+                renderApp();
+            };
+            tabsContainer.appendChild(btn);
+        });
+
+        document.getElementById('current-sheet-title').innerText = `현재 과목: ${currentSheet}`;
+    }
+
+    function renderTable() {
+        const sheet = data[currentSheet];
+        const headRow = document.getElementById('table-head');
+        const bodyRows = document.getElementById('table-body');
+        
+        headRow.innerHTML = '';
+        bodyRows.innerHTML = '';
+
+        // 열 헤더
+        let trHead = document.createElement('tr');
+        sheet.columns.forEach((col, colIndex) => {
+            let th = document.createElement('th');
+            th.innerHTML = `
+                <div class="header-actions">
+                    <span style="cursor:pointer; font-weight:bold;" onclick="editColumnName(${colIndex})">${col.name}</span>
+                    <button class="danger" style="padding:2px 6px; font-size:10px;" onclick="deleteColumn(${colIndex})">삭제</button>
+                </div>
+            `;
+            trHead.appendChild(th);
+        });
+        
+        let thAction = document.createElement('th');
+        thAction.style.width = "60px";
+        thAction.innerText = "행 관리";
+        trHead.appendChild(thAction);
+        
+        headRow.appendChild(trHead);
+
+        // 바디 셀 구성
+        sheet.rows.forEach((row, rowIndex) => {
+            let tr = document.createElement('tr');
+
+            sheet.columns.forEach(col => {
+                let td = document.createElement('td');
+                let cellKey = `${row.id}_${col.id}`;
+                let cellData = sheet.cells[cellKey] || { date: '', memo: '' };
+
+                let cellDiv = document.createElement('div');
+                cellDiv.className = 'grid-cell';
+
+                if (!cellData.date) {
+                    let dateInput = document.createElement('input');
+                    dateInput.type = 'date';
+                    dateInput.className = 'empty-cell-input';
+                    dateInput.onchange = (e) => {
+                        updateCellDate(cellKey, e.target.value);
+                    };
+                    cellDiv.appendChild(dateInput);
+                } else {
+                    let filledDiv = document.createElement('div');
+                    filledDiv.className = 'filled-cell';
+
+                    let dateBtn = document.createElement('button');
+                    dateBtn.className = `date-btn ${cellData.memo ? 'has-memo' : ''}`;
+                    dateBtn.innerText = cellData.date;
+                    dateBtn.onclick = () => openModal(cellKey, col.name);
+
+                    let editBtn = document.createElement('button');
+                    editBtn.className = 'edit-date-btn';
+                    editBtn.innerText = '📅 변경';
+                    editBtn.title = '날짜 변경';
+                    editBtn.onclick = () => {
+                        let newDate = prompt("변경할 날짜를 입력하세요 (YYYY-MM-DD):", cellData.date);
+                        if (newDate) {
+                            updateCellDate(cellKey, newDate);
+                        }
+                    };
+
+                    filledDiv.appendChild(dateBtn);
+                    filledDiv.appendChild(editBtn);
+                    cellDiv.appendChild(filledDiv);
+                }
+
+                td.appendChild(cellDiv);
+                tr.appendChild(td);
+            });
+
+            // 행 삭제 버튼
+            let tdAction = document.createElement('td');
+            tdAction.className = 'row-delete-container';
+            tdAction.innerHTML = `<button class="danger" style="padding:4px 8px; font-size:11px;" onclick="deleteRow(${rowIndex})">행 삭제</button>`;
+            tr.appendChild(tdAction);
+
+            bodyRows.appendChild(tr);
+        });
+    }
+
+    function renderApp() {
+        if(!data[currentSheet]) {
+            currentSheet = Object.keys(data)[0] || '';
+        }
+        renderTabs();
+        if(currentSheet) renderTable();
+    }
+
+    function addSheet() {
+        let sheetName = prompt("추가할 과목명을 입력하세요:");
+        if(sheetName && !data[sheetName]) {
+            data[sheetName] = {
+                columns: [{ id: "col_1", name: "1일차" }, { id: "col_2", name: "3일차" }],
+                rows: [{ id: "row_1" }, { id: "row_2" }],
+                cells: {}
+            };
+            currentSheet = sheetName;
+            saveData();
+            renderApp();
+        } else if(data[sheetName]) {
+            alert("이미 존재하는 과목명입니다.");
+        }
+    }
+
+    function deleteCurrentSheet() {
+        if(Object.keys(data).length <= 1) {
+            alert("최소 1개의 과목은 남아있어야 합니다.");
+            return;
+        }
+        if(confirm(`정말 "${currentSheet}" 과목 시트를 삭제하시겠습니까?`)) {
+            delete data[currentSheet];
+            currentSheet = Object.keys(data)[0];
+            saveData();
+            renderApp();
+        }
+    }
+
+    function addColumn() {
+        let name = prompt("복습 개념 이름을 입력하세요 (예: 7일차 복습):");
+        if(name) {
+            let newId = 'col_' + Date.now();
+            data[currentSheet].columns.push({ id: newId, name });
+            saveData();
+            renderTable();
+        }
+    }
+
+    function editColumnName(index) {
+        let col = data[currentSheet].columns[index];
+        let newName = prompt("복습 개념 이름을 수정하세요:", col.name);
+        if(newName) {
+            col.name = newName;
+            saveData();
+            renderTable();
+        }
+    }
+
+    function deleteColumn(index) {
+        if(confirm("해당 복습 열을 삭제하시겠습니까?")) {
+            let colId = data[currentSheet].columns[index].id;
+            data[currentSheet].columns.splice(index, 1);
+            Object.keys(data[currentSheet].cells).forEach(key => {
+                if(key.endsWith('_' + colId)) delete data[currentSheet].cells[key];
+            });
+            saveData();
+            renderTable();
+        }
+    }
+
+    function addRow() {
+        let newId = 'row_' + Date.now();
+        data[currentSheet].rows.push({ id: newId });
+        saveData();
+        renderTable();
+    }
+
+    function deleteRow(index) {
+        if(confirm("해당 행을 삭제하시겠습니까?")) {
+            let rowId = data[currentSheet].rows[index].id;
+            data[currentSheet].rows.splice(index, 1);
+            Object.keys(data[currentSheet].cells).forEach(key => {
+                if(key.startsWith(rowId + '_')) delete data[currentSheet].cells[key];
+            });
+            saveData();
+            renderTable();
+        }
+    }
+
+    function updateCellDate(cellKey, dateValue) {
+        if(!data[currentSheet].cells[cellKey]) {
+            data[currentSheet].cells[cellKey] = { date: '', memo: '' };
+        }
+        data[currentSheet].cells[cellKey].date = dateValue;
+        saveData();
+        renderTable();
+    }
+
+    function openModal(cellKey, colName) {
+        activeCellKey = cellKey;
+        if(!data[currentSheet].cells[cellKey]) {
+            data[currentSheet].cells[cellKey] = { date: '', memo: '' };
+        }
+        document.getElementById('modal-title').innerText = `[${colName}] - 날짜: ${data[currentSheet].cells[cellKey].date} 상세보기`;
+        document.getElementById('modal-memo').value = data[currentSheet].cells[cellKey].memo || '';
+        document.getElementById('memo-modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('memo-modal').style.display = 'none';
+        activeCellKey = null;
+    }
+
+    function saveMemo() {
+        if(activeCellKey) {
+            let memoText = document.getElementById('modal-memo').value.trim();
+            if(!data[currentSheet].cells[activeCellKey]) {
+                data[currentSheet].cells[activeCellKey] = { date: '', memo: '' };
+            }
+            data[currentSheet].cells[activeCellKey].memo = memoText;
+            saveData();
+            closeModal();
+            renderTable();
+        }
+    }
+
+    renderApp();
+</script>
+
+</body>
+</html>
